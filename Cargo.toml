@@ -1,0 +1,10 @@
+[package]
+name = "fs_dither_wasm"
+version = "0.1.0"
+authors = ["Simon Pugnet <simon@polaris64.net>"]
+
+[lib]
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]

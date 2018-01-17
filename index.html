@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript">
+      let image_loaded    = false;
+      let wasm_mod_loaded = false;
+      let width = 512;
+      let height = 512;
+      let ctx_src = null;
+      let ctx_dst = null;
+      let ptr = null;
+      let buf = null;
+      let img = null;
+      let js_buffer = null;
+      let js_img = null;
+      let mod = null;
+      let module = null;
+      let render_time = null;
+
+      function refreshUI() {
+        $('#txt_levels').val($('#levels').val());
+      }
+
+      function js_err_dist(input, error, amount) {
+        const v = (input + error * amount);
+        if (v < 0)
+          return 0;
+        else if (v > 255)
+          return 255;
+        else
+          return v;
+      }
+
+      function js_greyscale(r, g, b) {
+        return (r + g + b) / 3;
+      }
+
+      function js_quantize(x, levels) {
+        return (Math.round(levels * (x / 256.0)) * (255.0 / levels)) & 0xFF;
+      }
+
+      function js_process_nodither(n, ptr, width, height, levels, colour) {
+        let i, x, y, buf_off_x, buf_off_y, v, qv, r, g, b, qr, qg, qb;
+
+        for (i = 0; i < n; i++)
+        {
+          if (colour)
+          {
+            for (y = 0; y < height; y++)
+            {
+              buf_off_y = y * width * 4;
+              for (x = 0; x < width; x++)
+              {
+                buf_off_x = buf_off_y + x * 4;
+                r = js_buffer[buf_off_x + 0];
+                g = js_buffer[buf_off_x + 1];
+                b = js_buffer[buf_off_x + 2];
+                qr = js_quantize(r, levels);
+                qg = js_quantize(g, levels);
+                qb = js_quantize(b, levels);
+                js_buffer[buf_off_x + 0] = qr;
+                js_buffer[buf_off_x + 1] = qg;
+                js_buffer[buf_off_x + 2] = qb;
+              }
+            }
+          }
+          else
+          {
+            for (y = 0; y < height; y++)
+            {
+              buf_off_y = y * width * 4;
+              for (x = 0; x < width; x++)
+              {
+                buf_off_x = buf_off_y + x * 4;
+
+                v = js_greyscale(js_buffer[buf_off_x + 0], js_buffer[buf_off_x + 1], js_buffer[buf_off_x + 2]);
+                qv = js_quantize(v, levels);
+
+                js_buffer[buf_off_x + 0] = qv;
+                js_buffer[buf_off_x + 1] = qv;
+                js_buffer[buf_off_x + 2] = qv;
+              }
+            }
+          }
+        }
+      }
+
+      function js_process_dither(n, ptr, width, height, levels, colour) {
+        let i, x, y, buf_off_x, buf_off_y, v, qv, r, g, b, qr, qg, qb, err_r, err_g, err_b, err, v1, qv1, v2, qv2, v3, qv3, v4, qv4;
+
+        let f1 = 7.0 / 16.0;
+        let f2 = 3.0 / 16.0;
+        let f3 = 5.0 / 16.0;
+        let f4 = 1.0 / 16.0;
+
+        for (i = 0; i < n; i++)
+        {
+          if (colour)
+          {
+            for (y = 0; y < height - 1; y++)
+            {
+              buf_off_y = y * width * 4;
+              for (x = 1; x < width - 1; x++)
+              {
+                buf_off_x = buf_off_y + x * 4;
+                r = js_buffer[buf_off_x + 0];
+                g = js_buffer[buf_off_x + 1];
+                b = js_buffer[buf_off_x + 2];
+                qr = js_quantize(r, levels);
+                qg = js_quantize(g, levels);
+                qb = js_quantize(b, levels);
+                err_r = r - qr;
+                err_g = g - qg;
+                err_b = b - qb;
+
+                // x,y
+                js_buffer[buf_off_x + 0] = qr;
+                js_buffer[buf_off_x + 1] = qg;
+                js_buffer[buf_off_x + 2] = qb;
+
+                // x+1,y
+                js_buffer[buf_off_x + 4 + 0] = js_err_dist(js_buffer[buf_off_x + 4 + 0], err_r, f1);
+                js_buffer[buf_off_x + 4 + 1] = js_err_dist(js_buffer[buf_off_x + 4 + 1], err_g, f1);
+                js_buffer[buf_off_x + 4 + 2] = js_err_dist(js_buffer[buf_off_x + 4 + 2], err_b, f1);
+
+                // x-1,y+1
+                js_buffer[buf_off_x + (width * 4) - 4 + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 0], err_r, f2);
+                js_buffer[buf_off_x + (width * 4) - 4 + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 1], err_g, f2);
+                js_buffer[buf_off_x + (width * 4) - 4 + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 2], err_b, f2);
+
+                // x,y+1
+                js_buffer[buf_off_x + (width * 4) + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 0], err_r, f3);
+                js_buffer[buf_off_x + (width * 4) + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 1], err_g, f3);
+                js_buffer[buf_off_x + (width * 4) + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 2], err_b, f3);
+
+                // x+1,y+1
+                js_buffer[buf_off_x + (width * 4) + 4 + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 0], err_r, f4);
+                js_buffer[buf_off_x + (width * 4) + 4 + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 1], err_g, f4);
+                js_buffer[buf_off_x + (width * 4) + 4 + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 2], err_b, f4);
+              }
+            }
+          }
+          else
+          {
+            for (y = 0; y < height - 1; y++)
+            {
+              buf_off_y = y * width * 4;
+              for (x = 1; x < width - 1; x++)
+              {
+                buf_off_x = buf_off_y + x * 4;
+
+                v = js_greyscale(js_buffer[buf_off_x + 0], js_buffer[buf_off_x + 1], js_buffer[buf_off_x + 2]);
+                qv = js_quantize(v, levels);
+
+                err = v - qv;
+
+                // x,y
+                js_buffer[buf_off_x + 0] = qv;
+                js_buffer[buf_off_x + 1] = qv;
+                js_buffer[buf_off_x + 2] = qv;
+
+                // x+1,y
+                v1 = js_greyscale(js_buffer[buf_off_x + 4 + 0], js_buffer[buf_off_x + 4 + 1], js_buffer[buf_off_x + 4 + 2]);
+                qv1 = js_err_dist(v1, err, f1);
+                js_buffer[buf_off_x + 4 + 0] = qv1;
+                js_buffer[buf_off_x + 4 + 1] = qv1;
+                js_buffer[buf_off_x + 4 + 2] = qv1;
+
+                // x-1,y+1
+                v2 = js_greyscale(js_buffer[buf_off_x + (width * 4) - 4 + 0], js_buffer[buf_off_x + (width * 4) - 4 + 1], js_buffer[buf_off_x + (width * 4) - 4 + 2]);
+                qv2 = js_err_dist(v2, err, f2);
+                js_buffer[buf_off_x + (width * 4) - 4 + 0] = qv2;
+                js_buffer[buf_off_x + (width * 4) - 4 + 1] = qv2;
+                js_buffer[buf_off_x + (width * 4) - 4 + 2] = qv2;
+
+                // x,y+1
+                v3 = js_greyscale(js_buffer[buf_off_x + (width * 4) + 0], js_buffer[buf_off_x + (width * 4) + 1], js_buffer[buf_off_x + (width * 4) + 2]);
+                qv3 = js_err_dist(v3, err, f3);
+                js_buffer[buf_off_x + (width * 4) + 0] = qv3;
+                js_buffer[buf_off_x + (width * 4) + 1] = qv3;
+                js_buffer[buf_off_x + (width * 4) + 2] = qv3;
+
+                // x+1,y+1
+                v4 = js_greyscale(js_buffer[buf_off_x + (width * 4) + 4 + 0], js_buffer[buf_off_x + (width * 4) + 4 + 1], js_buffer[buf_off_x + (width * 4) + 4 + 2]);
+                qv4 = js_err_dist(v4, err, f4);
+                js_buffer[buf_off_x + (width * 4) + 4 + 0] = qv4;
+                js_buffer[buf_off_x + (width * 4) + 4 + 1] = qv4;
+                js_buffer[buf_off_x + (width * 4) + 4 + 2] = qv4;
+              }
+            }
+          }
+        }
+      }
+
+      function js_process(n, ptr, width, height, levels, colour, dither) {
+        if (dither)
+          js_process_dither(n, ptr, width, height, levels, colour);
+        else
+          js_process_nodither(n, ptr, width, height, levels, colour);
+      }
+
+      function draw(n) {
+
+        if (!image_loaded)
+          return alert('Please load an image first');
+
+        // Copy source image data into WASM and JS buffers
+        buf.set(ctx_src.getImageData(0, 0, width, height).data);
+        js_buffer.set(ctx_src.getImageData(0, 0, width, height).data);
+
+        let levels     = parseInt($('#txt_levels').val());
+        let use_rgb    = $('#rgb').is(':checked');
+        let use_dither = $('#dither').is(':checked');
+        let ts = 0;
+        let te = 0;
+        let renderer = module.dither;
+        let p_img = img;
+
+        switch ($('#renderer').val().toUpperCase())
+        {
+          case 'JS':
+            renderer = js_process;
+            p_img = js_img;
+            break;
+          case 'WASM':
+            if (!wasm_mod_loaded)
+              return alert('Unable to render via WASM: module not loaded');
+            renderer = module.process_buffer;
+            p_img = img;
+            break;
+        }
+
+        ts = performance.now();
+        renderer(
+          n,
+          ptr,
+          width,
+          height,
+          levels,
+          use_rgb,
+          use_dither,
+        );
+        te = performance.now();
+        render_time = (te - ts) / n;
+        ctx_dst.putImageData(p_img, 0, 0);
+
+        $('#render_time').text(render_time.toString() + 'ms');
+      }
+
+      function loadImage() {
+
+          // Loading an image directly via Image.src will work for any URL,
+          // however if the response does not include CORS headers then drawing
+          // the resulting image to a canvas will taint the canvas, meaning
+          // that pixel data cannot be extracted. Therefore, a fetch() is used
+          // instead, using a CORS-Anywhere server to proxy the request and
+          // adding the necessary CORS headers so that we can get a non-opaque
+          // response (allowing access to the response body)
+          //
+          // The purpose of this browser restriction is to avoid reading image
+          // data from JS for an image that is loaded by the browser from
+          // another domain, potentially using the user's stored credentials to
+          // access privileged data. If a server sends a CORS response
+          // indicating that the current page's domain is an allowed origin
+          // then this restriction will not be enforced. However, we want to
+          // allow images to be loaded arbitrarily. Therefore, we use the
+          // CORS-Anywhere server to proxy the request to load the image,
+          // eliminating the possibility of user credentials being used and
+          // therefore providing a non-opaque response.
+
+          const url = `https://cors-anywhere.herokuapp.com/${$('#src_img_url').val()}`;
+
+          fetch(url)
+            .then((resp) => resp.blob())
+            .then((blob) => {
+              const img = new Image();
+              img.onload = () => {
+                handleNewImage(img);
+                draw(1);
+              };
+              img.src = URL.createObjectURL(blob);
+            })
+            .catch((err) => {
+              console.error('Unable to load image:', err);
+              image_loaded = false;
+            });
+      }
+
+      function handleNewImage(newImg) {
+
+        // Set global width and height to new image dimensions
+        width  = newImg.width;
+        height = newImg.height;
+        
+        // Create source and destination canvases
+        const canv_src = $('<canvas>').attr('width', newImg.width).attr('height', newImg.height).css('max-width', '100%');
+        const canv_dst = $('<canvas>')
+          .attr('width', newImg.width)
+          .attr('height', newImg.height)
+          .css('max-width', $('#scale_dst').is(':checked') ? '100%' : 'none');
+
+        // Get 2d contexts for both canvases
+        ctx_src = canv_src.get(0).getContext('2d');
+        ctx_dst = canv_dst.get(0).getContext('2d');
+        ctx_src.imageSmoothingEnabled = true;
+        ctx_dst.imageSmoothingEnabled = true;
+
+        // Append canvas elements to containers
+        $('#canv_src_cont').empty().append(canv_src);
+        $('#canv_dst_cont').empty().append(canv_dst);
+
+        let byte_size = width * height * 4;
+
+        // Allocate memory in the WASM module for the image data (deallocate
+        // first if memory has already been allocated)
+        if (ptr)
+          module.dealloc(ptr);
+        ptr = module.malloc(byte_size);
+
+        // Create view of the allocated WASM memory buffer
+        buf = new Uint8ClampedArray(mod.exports.memory.buffer, ptr, byte_size);
+
+        // Create ImageData from buffer view
+        img = new ImageData(buf, width, height);
+
+        // Create buffer and image for JS to draw into
+        js_buffer = new Uint8ClampedArray(byte_size);
+        js_img    = new ImageData(js_buffer, width, height);
+
+        // Draw new image to source canvas (for display purposes)
+        ctx_src.drawImage(newImg, 0, 0);
+
+
+        image_loaded = true;
+      }
+
+      $('document').ready(() => {
+
+        // Load and instantiate the WASM module
+        fetch('fs_dither.wasm')
+          .then(resp => resp.arrayBuffer())
+          .then(bytes =>
+            WebAssembly.instantiate(
+              bytes,
+              // The following importObject is required if the WASM module uses
+              // f32.round() as this is not provided by the standard library
+              // and must be provided to the module as an import
+              //{ env: { roundf: Math.round } }
+            )
+          )
+          .then(results => {
+            mod = results.instance;
+            module = {
+              malloc:         mod.exports.malloc,
+              dealloc:        mod.exports.dealloc,
+              process_buffer: mod.exports.process_buffer,
+            };
+            wasm_mod_loaded = true;
+          })
+          .catch((err) => {
+            console.error('Unable to load and instantiate WASM module:', err);
+            wasm_mod_loaded = false;
+          });
+
+        refreshUI();
+        loadImage();
+
+
+        // Element event handlers
+
+        $('.controller.range').change(() => refreshUI());
+
+        $('.controller').change(() => draw(1));
+
+        $('#benchmark').click(() => draw(5));
+
+        $('#load_img').click(() => loadImage());
+
+        $('#scale_dst').click(() => {
+          if ($('#scale_dst').is(':checked'))
+            $('#canv_dst_cont canvas').css('max-width', '100%');
+          else
+            $('#canv_dst_cont canvas').css('max-width', 'none');
+        });
+      });
+    </script>
+  </head>
+
+  <body>
+
+    <div class="container-fluid">
+
+      <div class="row">
+        <div class="col-xs-12 col-sm-3 form-group">
+          <label>Renderer:</label>
+          <select id="renderer" class="form-control controller">
+            <option value="JS">JavaScript</option>
+            <option value="WASM" selected>WebAssembly</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="row">
+        <div class="col-xs-12 col-sm-6">
+          <div id="canv_src_cont" class="well"></div>
+        </div>
+        <div class="col-xs-12 col-sm-6">
+          <div id="canv_dst_cont" class="well"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-xs-12 col-sm-3 form-group">
+          <label>Source image URL</label>
+          <!-- <input id="src_img_url" class="form-control" type="text" value="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png" /> -->
+          <!-- <input id="src_img_url" class="form-control" type="text" value="https://www.w3schools.com/w3images/lights.jpg" /> -->
+          <input id="src_img_url" class="form-control" type="text" value="https://www.imagemagick.org/image/gradients/radial_gradient.png" />
+          <button id="load_img" class="btn btn-primary">Load image</button>
+        </div>
+        <div class="col-xs-12 col-sm-2 form-group">
+          <label>Colour levels</label>
+          <input id="levels" class="form-control controller range" type="range" value="1" min="1" max="255" step="1" />
+          <br />
+          <input id="txt_levels" class="form-control controller" type="text" size="5" value="0" />
+        </div>
+        <div class="col-xs-12 col-sm-2 form-group">
+          <label>RGB?</label>
+          <input id="rgb" class="form-control controller" type="checkbox" checked />
+        </div>
+        <div class="col-xs-12 col-sm-2 form-group">
+          <label>Dither?</label>
+          <input id="dither" class="form-control controller" type="checkbox" checked />
+        </div>
+        <div class="col-xs-12 col-sm-3 form-group">
+          <label>Scale output to fit screen?</label>
+          <input id="scale_dst" class="form-control" type="checkbox" checked />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-xs-12">
+          <p>
+            <button id="benchmark" class="btn btn-default">Benchmark</button>
+            The last frame took <strong id="render_time">0ms</strong> to render.
+          </p>
+        </div>
+      </div>
+
+
+    </div>
+
+  </body>
+
+</html>
