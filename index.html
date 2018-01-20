@@ -122,25 +122,29 @@
                 js_buffer[buf_off_x + 1] = qg;
                 js_buffer[buf_off_x + 2] = qb;
 
-                // x+1,y
-                js_buffer[buf_off_x + 4 + 0] = js_err_dist(js_buffer[buf_off_x + 4 + 0], err_r, f1);
-                js_buffer[buf_off_x + 4 + 1] = js_err_dist(js_buffer[buf_off_x + 4 + 1], err_g, f1);
-                js_buffer[buf_off_x + 4 + 2] = js_err_dist(js_buffer[buf_off_x + 4 + 2], err_b, f1);
+                if (err_r !== 0)
+                {
+                  js_buffer[buf_off_x + 4 + 0] = js_err_dist(js_buffer[buf_off_x + 4 + 0], err_r, f1);
+                  js_buffer[buf_off_x + (width * 4) - 4 + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 0], err_r, f2);
+                  js_buffer[buf_off_x + (width * 4) + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 0], err_r, f3);
+                  js_buffer[buf_off_x + (width * 4) + 4 + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 0], err_r, f4);
+                }
 
-                // x-1,y+1
-                js_buffer[buf_off_x + (width * 4) - 4 + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 0], err_r, f2);
-                js_buffer[buf_off_x + (width * 4) - 4 + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 1], err_g, f2);
-                js_buffer[buf_off_x + (width * 4) - 4 + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 2], err_b, f2);
+                if (err_g !== 0)
+                {
+                  js_buffer[buf_off_x + 4 + 1] = js_err_dist(js_buffer[buf_off_x + 4 + 1], err_g, f1);
+                  js_buffer[buf_off_x + (width * 4) - 4 + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 1], err_g, f2);
+                  js_buffer[buf_off_x + (width * 4) + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 1], err_g, f3);
+                  js_buffer[buf_off_x + (width * 4) + 4 + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 1], err_g, f4);
+                }
 
-                // x,y+1
-                js_buffer[buf_off_x + (width * 4) + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 0], err_r, f3);
-                js_buffer[buf_off_x + (width * 4) + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 1], err_g, f3);
-                js_buffer[buf_off_x + (width * 4) + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 2], err_b, f3);
-
-                // x+1,y+1
-                js_buffer[buf_off_x + (width * 4) + 4 + 0] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 0], err_r, f4);
-                js_buffer[buf_off_x + (width * 4) + 4 + 1] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 1], err_g, f4);
-                js_buffer[buf_off_x + (width * 4) + 4 + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 2], err_b, f4);
+                if (err_b !== 0)
+                {
+                  js_buffer[buf_off_x + 4 + 2] = js_err_dist(js_buffer[buf_off_x + 4 + 2], err_b, f1);
+                  js_buffer[buf_off_x + (width * 4) - 4 + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) - 4 + 2], err_b, f2);
+                  js_buffer[buf_off_x + (width * 4) + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 2], err_b, f3);
+                  js_buffer[buf_off_x + (width * 4) + 4 + 2] = js_err_dist(js_buffer[buf_off_x + (width * 4) + 4 + 2], err_b, f4);
+                }
               }
             }
           }
@@ -163,33 +167,36 @@
                 js_buffer[buf_off_x + 1] = qv;
                 js_buffer[buf_off_x + 2] = qv;
 
-                // x+1,y
-                v1 = js_greyscale(js_buffer[buf_off_x + 4 + 0], js_buffer[buf_off_x + 4 + 1], js_buffer[buf_off_x + 4 + 2]);
-                qv1 = js_err_dist(v1, err, f1);
-                js_buffer[buf_off_x + 4 + 0] = qv1;
-                js_buffer[buf_off_x + 4 + 1] = qv1;
-                js_buffer[buf_off_x + 4 + 2] = qv1;
+                if (err !== 0)
+                {
+                  // x+1,y
+                  v1 = js_greyscale(js_buffer[buf_off_x + 4 + 0], js_buffer[buf_off_x + 4 + 1], js_buffer[buf_off_x + 4 + 2]);
+                  qv1 = js_err_dist(v1, err, f1);
+                  js_buffer[buf_off_x + 4 + 0] = qv1;
+                  js_buffer[buf_off_x + 4 + 1] = qv1;
+                  js_buffer[buf_off_x + 4 + 2] = qv1;
 
-                // x-1,y+1
-                v2 = js_greyscale(js_buffer[buf_off_x + (width * 4) - 4 + 0], js_buffer[buf_off_x + (width * 4) - 4 + 1], js_buffer[buf_off_x + (width * 4) - 4 + 2]);
-                qv2 = js_err_dist(v2, err, f2);
-                js_buffer[buf_off_x + (width * 4) - 4 + 0] = qv2;
-                js_buffer[buf_off_x + (width * 4) - 4 + 1] = qv2;
-                js_buffer[buf_off_x + (width * 4) - 4 + 2] = qv2;
+                  // x-1,y+1
+                  v2 = js_greyscale(js_buffer[buf_off_x + (width * 4) - 4 + 0], js_buffer[buf_off_x + (width * 4) - 4 + 1], js_buffer[buf_off_x + (width * 4) - 4 + 2]);
+                  qv2 = js_err_dist(v2, err, f2);
+                  js_buffer[buf_off_x + (width * 4) - 4 + 0] = qv2;
+                  js_buffer[buf_off_x + (width * 4) - 4 + 1] = qv2;
+                  js_buffer[buf_off_x + (width * 4) - 4 + 2] = qv2;
 
-                // x,y+1
-                v3 = js_greyscale(js_buffer[buf_off_x + (width * 4) + 0], js_buffer[buf_off_x + (width * 4) + 1], js_buffer[buf_off_x + (width * 4) + 2]);
-                qv3 = js_err_dist(v3, err, f3);
-                js_buffer[buf_off_x + (width * 4) + 0] = qv3;
-                js_buffer[buf_off_x + (width * 4) + 1] = qv3;
-                js_buffer[buf_off_x + (width * 4) + 2] = qv3;
+                  // x,y+1
+                  v3 = js_greyscale(js_buffer[buf_off_x + (width * 4) + 0], js_buffer[buf_off_x + (width * 4) + 1], js_buffer[buf_off_x + (width * 4) + 2]);
+                  qv3 = js_err_dist(v3, err, f3);
+                  js_buffer[buf_off_x + (width * 4) + 0] = qv3;
+                  js_buffer[buf_off_x + (width * 4) + 1] = qv3;
+                  js_buffer[buf_off_x + (width * 4) + 2] = qv3;
 
-                // x+1,y+1
-                v4 = js_greyscale(js_buffer[buf_off_x + (width * 4) + 4 + 0], js_buffer[buf_off_x + (width * 4) + 4 + 1], js_buffer[buf_off_x + (width * 4) + 4 + 2]);
-                qv4 = js_err_dist(v4, err, f4);
-                js_buffer[buf_off_x + (width * 4) + 4 + 0] = qv4;
-                js_buffer[buf_off_x + (width * 4) + 4 + 1] = qv4;
-                js_buffer[buf_off_x + (width * 4) + 4 + 2] = qv4;
+                  // x+1,y+1
+                  v4 = js_greyscale(js_buffer[buf_off_x + (width * 4) + 4 + 0], js_buffer[buf_off_x + (width * 4) + 4 + 1], js_buffer[buf_off_x + (width * 4) + 4 + 2]);
+                  qv4 = js_err_dist(v4, err, f4);
+                  js_buffer[buf_off_x + (width * 4) + 4 + 0] = qv4;
+                  js_buffer[buf_off_x + (width * 4) + 4 + 1] = qv4;
+                  js_buffer[buf_off_x + (width * 4) + 4 + 2] = qv4;
+                }
               }
             }
           }

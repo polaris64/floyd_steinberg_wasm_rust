@@ -91,25 +91,26 @@ fn process_buffer_dither(sl: &mut [u8], width: usize, height: usize, levels: u8,
                 sl[buf_off_x + 1] = qg;
                 sl[buf_off_x + 2] = qb;
 
-                // x+1,y
-                sl[buf_off_x + 4 + 0] = err_dist(sl[buf_off_x + 4 + 0], err_r, f1);
-                sl[buf_off_x + 4 + 1] = err_dist(sl[buf_off_x + 4 + 1], err_g, f1);
-                sl[buf_off_x + 4 + 2] = err_dist(sl[buf_off_x + 4 + 2], err_b, f1);
+                if err_r as i64 != 0 {
+                    sl[buf_off_x + 4 + 0] = err_dist(sl[buf_off_x + 4 + 0], err_r, f1);
+                    sl[buf_off_x + (width * 4) - 4 + 0] = err_dist(sl[buf_off_x + (width * 4) - 4 + 0], err_r, f2);
+                    sl[buf_off_x + (width * 4) + 0] = err_dist(sl[buf_off_x + (width * 4) + 0], err_r, f3);
+                    sl[buf_off_x + (width * 4) + 4 + 0] = err_dist(sl[buf_off_x + (width * 4) + 4 + 0], err_r, f4);
+                }
 
-                // x-1,y+1
-                sl[buf_off_x + (width * 4) - 4 + 0] = err_dist(sl[buf_off_x + (width * 4) - 4 + 0], err_r, f2);
-                sl[buf_off_x + (width * 4) - 4 + 1] = err_dist(sl[buf_off_x + (width * 4) - 4 + 1], err_g, f2);
-                sl[buf_off_x + (width * 4) - 4 + 2] = err_dist(sl[buf_off_x + (width * 4) - 4 + 2], err_b, f2);
+                if err_g as i64 != 0 {
+                    sl[buf_off_x + 4 + 1] = err_dist(sl[buf_off_x + 4 + 1], err_g, f1);
+                    sl[buf_off_x + (width * 4) - 4 + 1] = err_dist(sl[buf_off_x + (width * 4) - 4 + 1], err_g, f2);
+                    sl[buf_off_x + (width * 4) + 1] = err_dist(sl[buf_off_x + (width * 4) + 1], err_g, f3);
+                    sl[buf_off_x + (width * 4) + 4 + 1] = err_dist(sl[buf_off_x + (width * 4) + 4 + 1], err_g, f4);
+                }
 
-                // x,y+1
-                sl[buf_off_x + (width * 4) + 0] = err_dist(sl[buf_off_x + (width * 4) + 0], err_r, f3);
-                sl[buf_off_x + (width * 4) + 1] = err_dist(sl[buf_off_x + (width * 4) + 1], err_g, f3);
-                sl[buf_off_x + (width * 4) + 2] = err_dist(sl[buf_off_x + (width * 4) + 2], err_b, f3);
-
-                // x+1,y+1
-                sl[buf_off_x + (width * 4) + 4 + 0] = err_dist(sl[buf_off_x + (width * 4) + 4 + 0], err_r, f4);
-                sl[buf_off_x + (width * 4) + 4 + 1] = err_dist(sl[buf_off_x + (width * 4) + 4 + 1], err_g, f4);
-                sl[buf_off_x + (width * 4) + 4 + 2] = err_dist(sl[buf_off_x + (width * 4) + 4 + 2], err_b, f4);
+                if err_b as i64 != 0 {
+                    sl[buf_off_x + 4 + 2] = err_dist(sl[buf_off_x + 4 + 2], err_b, f1);
+                    sl[buf_off_x + (width * 4) - 4 + 2] = err_dist(sl[buf_off_x + (width * 4) - 4 + 2], err_b, f2);
+                    sl[buf_off_x + (width * 4) + 2] = err_dist(sl[buf_off_x + (width * 4) + 2], err_b, f3);
+                    sl[buf_off_x + (width * 4) + 4 + 2] = err_dist(sl[buf_off_x + (width * 4) + 4 + 2], err_b, f4);
+                }
             }
         }
     } else {
@@ -127,33 +128,35 @@ fn process_buffer_dither(sl: &mut [u8], width: usize, height: usize, levels: u8,
                 sl[buf_off_x + 1] = qv;
                 sl[buf_off_x + 2] = qv;
 
-                // x+1,y
-                v1 = greyscale(sl[buf_off_x + 4 + 0], sl[buf_off_x + 4 + 1], sl[buf_off_x + 4 + 2]);
-                qv1 = err_dist(v1, err, f1);
-                sl[buf_off_x + 4 + 0] = qv1;
-                sl[buf_off_x + 4 + 1] = qv1;
-                sl[buf_off_x + 4 + 2] = qv1;
+                if err as i64 != 0 {
+                    // x+1,y
+                    v1 = greyscale(sl[buf_off_x + 4 + 0], sl[buf_off_x + 4 + 1], sl[buf_off_x + 4 + 2]);
+                    qv1 = err_dist(v1, err, f1);
+                    sl[buf_off_x + 4 + 0] = qv1;
+                    sl[buf_off_x + 4 + 1] = qv1;
+                    sl[buf_off_x + 4 + 2] = qv1;
 
-                // x-1,y+1
-                v2 = greyscale(sl[buf_off_x + (width * 4) - 4 + 0], sl[buf_off_x + (width * 4) - 4 + 1], sl[buf_off_x + (width * 4) - 4 + 2]);
-                qv2 = err_dist(v2, err, f2);
-                sl[buf_off_x + (width * 4) - 4 + 0] = qv2;
-                sl[buf_off_x + (width * 4) - 4 + 1] = qv2;
-                sl[buf_off_x + (width * 4) - 4 + 2] = qv2;
+                    // x-1,y+1
+                    v2 = greyscale(sl[buf_off_x + (width * 4) - 4 + 0], sl[buf_off_x + (width * 4) - 4 + 1], sl[buf_off_x + (width * 4) - 4 + 2]);
+                    qv2 = err_dist(v2, err, f2);
+                    sl[buf_off_x + (width * 4) - 4 + 0] = qv2;
+                    sl[buf_off_x + (width * 4) - 4 + 1] = qv2;
+                    sl[buf_off_x + (width * 4) - 4 + 2] = qv2;
 
-                // x,y+1
-                v3 = greyscale(sl[buf_off_x + (width * 4) + 0], sl[buf_off_x + (width * 4) + 1], sl[buf_off_x + (width * 4) + 2]);
-                qv3 = err_dist(v3, err, f3);
-                sl[buf_off_x + (width * 4) + 0] = qv3;
-                sl[buf_off_x + (width * 4) + 1] = qv3;
-                sl[buf_off_x + (width * 4) + 2] = qv3;
+                    // x,y+1
+                    v3 = greyscale(sl[buf_off_x + (width * 4) + 0], sl[buf_off_x + (width * 4) + 1], sl[buf_off_x + (width * 4) + 2]);
+                    qv3 = err_dist(v3, err, f3);
+                    sl[buf_off_x + (width * 4) + 0] = qv3;
+                    sl[buf_off_x + (width * 4) + 1] = qv3;
+                    sl[buf_off_x + (width * 4) + 2] = qv3;
 
-                // x+1,y+1
-                v4 = greyscale(sl[buf_off_x + (width * 4) + 4 + 0], sl[buf_off_x + (width * 4) + 4 + 1], sl[buf_off_x + (width * 4) + 4 + 2]);
-                qv4 = err_dist(v4, err, f4);
-                sl[buf_off_x + (width * 4) + 4 + 0] = qv4;
-                sl[buf_off_x + (width * 4) + 4 + 1] = qv4;
-                sl[buf_off_x + (width * 4) + 4 + 2] = qv4;
+                    // x+1,y+1
+                    v4 = greyscale(sl[buf_off_x + (width * 4) + 4 + 0], sl[buf_off_x + (width * 4) + 4 + 1], sl[buf_off_x + (width * 4) + 4 + 2]);
+                    qv4 = err_dist(v4, err, f4);
+                    sl[buf_off_x + (width * 4) + 4 + 0] = qv4;
+                    sl[buf_off_x + (width * 4) + 4 + 1] = qv4;
+                    sl[buf_off_x + (width * 4) + 4 + 2] = qv4;
+                }
             }
         }
     }
